@@ -1,31 +1,15 @@
+# clustered resources
+
 apiVersion: v1
 kind: Namespace
 metadata:
   name: local-path-storage
 
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: local-path-provisioner-service-account
-  namespace: local-path-storage
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: local-path-provisioner-role
-  namespace: local-path-storage
-rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
-
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: local-path-provisioner-role
+  name: lpp-role
 rules:
   - apiGroups: [""]
     resources: ["nodes", "persistentvolumeclaims", "configmaps", "pods", "pods/log"]
@@ -44,50 +28,79 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: local-path-provisioner-bind
+  name: lpp-bind
   namespace: local-path-storage
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: local-path-provisioner-role
+  name: lpp-role
 subjects:
   - kind: ServiceAccount
-    name: local-path-provisioner-service-account
+    name: lpp-service-account
     namespace: local-path-storage
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: local-path-provisioner-bind
+  name: lpp-bind
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: local-path-provisioner-role
+  name: lpp-role
 subjects:
   - kind: ServiceAccount
-    name: local-path-provisioner-service-account
+    name: lpp-service-account
     namespace: local-path-storage
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+
+# namespaced resources
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lpp-service-account
+  namespace: local-path-storage
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lpp-role
+  namespace: local-path-storage
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: local-path-provisioner
+  name: lpp
   namespace: local-path-storage
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: local-path-provisioner
+      app: lpp
   template:
     metadata:
       labels:
-        app: local-path-provisioner
+        app: lpp
     spec:
-      serviceAccountName: local-path-provisioner-service-account
+      serviceAccountName: lpp-service-account
       containers:
-        - name: local-path-provisioner
+        - name: lpp
           image: rancher/local-path-provisioner:v0.0.34
           imagePullPolicy: IfNotPresent
           command:
@@ -111,14 +124,6 @@ spec:
           configMap:
             name: local-path-config
 
----
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: local-path
-provisioner: rancher.io/local-path
-volumeBindingMode: WaitForFirstConsumer
-reclaimPolicy: Delete
 
 ---
 kind: ConfigMap
