@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: local-path-storage
+  name: lpp
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -29,15 +29,15 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: lpp-bind
-  namespace: local-path-storage
+  namespace: lpp
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: lpp-role
 subjects:
   - kind: ServiceAccount
-    name: lpp-service-account
-    namespace: local-path-storage
+    name: lpp-sa
+    namespace: lpp
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -50,17 +50,20 @@ roleRef:
   name: lpp-role
 subjects:
   - kind: ServiceAccount
-    name: lpp-service-account
-    namespace: local-path-storage
+    name: lpp-sa
+    namespace: lpp
 
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: local-path
+# When someone asks for storage with this StorageClass, call the component that registered itself under this exact name 
+# the id rancher.io/local-path is hard coded in the container image of the LPP.
 provisioner: rancher.io/local-path
 volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete
+
 
 # namespaced resources
 
@@ -68,15 +71,15 @@ reclaimPolicy: Delete
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: lpp-service-account
-  namespace: local-path-storage
+  name: lpp-sa
+  namespace: lpp
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: lpp-role
-  namespace: local-path-storage
+  namespace: lpp
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -87,7 +90,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lpp
-  namespace: local-path-storage
+  namespace: lpp
 spec:
   replicas: 1
   selector:
@@ -98,7 +101,7 @@ spec:
       labels:
         app: lpp
     spec:
-      serviceAccountName: lpp-service-account
+      serviceAccountName: lpp-sa
       containers:
         - name: lpp
           image: rancher/local-path-provisioner:v0.0.34
@@ -122,22 +125,22 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: local-path-config
+            name: lpp-cm
 
 
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: local-path-config
-  namespace: local-path-storage
+  name: lpp-cm
+  namespace: lpp
 data:
   config.json: |-
     {
             "nodePathMap":[
             {
                     "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
-                    "paths":["/opt/local-path-provisioner"]
+                    "paths":["/wkspc/rancher/lpp"]
             }
             ]
     }
