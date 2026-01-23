@@ -125,14 +125,14 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: lpp-cm
+            name: local-path-config
 
 
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: lpp-cm
+  name: local-path-config
   namespace: lpp
 data:
   config.json: |-
