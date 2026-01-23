@@ -112,6 +112,8 @@ spec:
             - start
             - --config
             - /etc/config/config.json
+            - --helper-pod-file
+            - /etc/config/helperPod.yaml
           volumeMounts:
             - name: config-volume
               mountPath: /etc/config/
