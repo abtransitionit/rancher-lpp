@@ -92,18 +92,23 @@ metadata:
   name: lpp
   namespace: lpp
 spec:
+  # 1 pod should always be running
   replicas: 1
+  # this deployment manage pods with label: "lpp" (selector.matchLabels == template.metadata.labels)
   selector:
     matchLabels:
       app: lpp
+  # define some meta properties for pods
   template:
     metadata:
+      # define the label of the pod
       labels:
         app: lpp
     spec:
       serviceAccountName: lpp-sa
       containers:
         - name: lpp
+          # TODO # image: rancher/local-path-provisioner@sha256:... avoid same tag , different binary surprise
           image: rancher/local-path-provisioner:v0.0.34
           imagePullPolicy: IfNotPresent
           command:
@@ -134,6 +139,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
+  # name is hard coded in the container image of the LPP
   name: local-path-config
   namespace: lpp
 data:
